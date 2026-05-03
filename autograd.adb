@@ -1,33 +1,56 @@
+with Ada.Text_IO; use Ada.Text_IO;
+with Ada.Unchecked_Deallocation;
+
 package body Autograd is
 
-   function Create_Tensor(Value : Float; Gradient : Float := 0.0) return Tensor is
-   begin
-      return (Value => Value, Gradient => Gradient);
-   end Create_Tensor;
+   -- Utilities --
 
-   function "+" (A, B: Tensor) return Tensor is
-   begin
-      return Create_Tensor(A.Value + B.Value, A.Gradient + B.Gradient);
-   end "+";
+   procedure Free_List is new Ada.Unchecked_Deallocation (Object => Value, Name => Value_Access);
 
-   function "*" (A, B: Tensor) return Tensor is
-   begin
-      return Create_Tensor(A.Value * B.Value, A.Value * B.Gradient + A.Gradient * B.Value);
-   end "*";
+   procedure Build_Topo (V : in out Value; Topo : in out Value_Access);
 
-   function "-" (A, B: Tensor) return Tensor is
+   procedure Build_Topo (V : in out Value; Topo : in out Value_Access) is
    begin
-      return Create_Tensor(A.Value - B.Value, A.Gradient - B.Gradient);
-   end "-";
+      if not V.Visited then
+         V.Visited := True;
+         if V.Prev /= null then
+            Build_Topo (V.Prev.all, Topo);
+         end if;
+         if V.Next /= null then
+            Build_Topo (V.Next.all, Topo);
+         end if;
 
-   function "/" (A, B : Tensor) return Tensor is
-   begin
-      return Create_Tensor(A.Value / B.Value, (A.Gradient * B.Value - A.Value * B.Gradient) / (B.Value * B.Value));
-   end "/";
+         -- insert at head of topological list
+         declare
+            New_Node : constant Value_Access := new Value'(V);
+         begin
+            New_Node.Next := Topo;
+            Topo := New_Node;
+         end;
+      end if;
+   end Build_Topo;
 
-   procedure Backward (Loss : in out Tensor) is
+   -- Constructors --
+
+   function New_Constant (Data : Real) return Value is
+      V : Value;
    begin
-      Loss.Gradient := 1.0;
-   end Backward;
+      V.Data := Data;
+      V.Grad := 0.0;
+      return V;
+   end New_Constant;
+
+   function New_Variable (Data : Real) return Value is
+   begin
+      return New_Constant (Data);  -- gradient starts at 0
+   end New_Variable;
+
+   -- Accessors --
+
+   function Data (V : Value) return Real is
+   begin
+      return V.Data;
+   end Data;
+
 
 end Autograd;
