@@ -70,7 +70,7 @@ package body Autograd is
    procedure Zero_Grad (V : in out Value) is
    begin
       V.Grad := 0.0;
-   end Zero_Grad;
+   end Zero_Grad;   
 
    -- Backward --
 
@@ -144,6 +144,39 @@ package body Autograd is
    begin
       V.Prev.Grad := V.Prev.Grad + (1.0 - T * T) * V.Grad;
    end Backward_Tanh;
+
+   -- Activations --
+
+   function ReLU (V : Value) return Value is
+      Result : Value;
+   begin
+      if V.Data > 0.0 then
+         Result.Data := V.Data;
+      else
+         Result.Data := 0.0;
+      end if;
+      Result.Prev := new Value'(V);
+      Result.Backward := new Backward_Procedure'(Backward_ReLU);
+      return Result;
+   end ReLU;
+
+   function Sigmoid (V : Value) return Value is
+      Result : Value;
+   begin
+      Result.Data := 1.0 / (1.0 + Real (Ada.Numerics.Elementary_Functions.Exp (-V.Data)));
+      Result.Prev := new Value'(V);
+      Result.Backward := new Backward_Procedure'(Backward_Sigmoid);
+      return Result;
+   end Sigmoid;
+
+   function Tanh (V : Value) return Value is
+      Result : Value;
+   begin
+      Result.Data := Real (Ada.Numerics.Elementary_Functions.Tanh (V.Data));
+      Result.Prev := new Value'(V);
+      Result.Backward := new Backward_Procedure'(Backward_Tanh);
+      return Result;
+   end Tanh;
 
    -- Operator Overloads --
 
