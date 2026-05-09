@@ -229,5 +229,30 @@ package body Autograd is
       V.Backward := new Backward_Procedure'(Backward_Pow);
       return V;
    end "**";
+
+   -- Debugging --
+
+   procedure Print (V : Value; Label : String := "") is
+   begin
+      Put_Line (Label & " data =" & V.Data'Image & " grad =" & V.Grad'Image);
+   end Print;
+
+   -- Controlled ops --
+
+   overriding procedure Initialize (V : in out Value) is
+   begin
+      null;
+   end Initialize;
+
+   overriding procedure Finalize (V : in out Value) is
+   begin
+      -- free dynamic memory when Value goes out of scope
+      if V.Prev /= null then
+         Free_List (V.Prev);
+      end if;
+      if V.Next /= null then
+         Free_List (V.Next);
+      end if;
+   end Finalize;
    
 end Autograd;
